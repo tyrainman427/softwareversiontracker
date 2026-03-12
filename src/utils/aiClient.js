@@ -2,6 +2,17 @@
 // Each entry: { url, parse(html) }
 // url = the page to scrape; parse = extract version from HTML
 const PAGE_SCRAPERS = {
+  'clickshare': {
+    url: 'https://www.barco.com/en/support/software/r3306194',
+    manual: true,
+  },
+  'arsclip': {
+    url: 'https://www.joejoesoft.com/vcms/97/',
+    parse: (html) => {
+      const match = html.match(/Changes in v([\d.]+)/i);
+      return match ? match[1] : null;
+    },
+  },
   'ms report builder': {
     url: 'https://www.microsoft.com/en-us/download/details.aspx?id=53613',
     parse: (html) => {
@@ -38,6 +49,12 @@ async function fetchFromPage(softwareName, signal) {
   const key = softwareName.toLowerCase().trim();
   const scraper = PAGE_SCRAPERS[key];
   if (!scraper) return null;
+
+  // Manual entries — return link only, no auto-scrape
+  if (scraper.manual) {
+    console.log(`[PageScraper] ${softwareName}: manual check → ${scraper.url}`);
+    return { latestVersion: 'Manual Check', source: scraper.url };
+  }
 
   const res = await fetch(`/api/fetch?url=${encodeURIComponent(scraper.url)}`, { signal });
   if (!res.ok) return null;
