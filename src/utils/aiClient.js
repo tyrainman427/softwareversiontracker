@@ -9,6 +9,21 @@ const PAGE_SCRAPERS = {
       return match ? match[1] : null;
     },
   },
+  'microsoft powerbi desktop': {
+    url: 'https://www.microsoft.com/en-us/download/details.aspx?id=58494',
+    parse: (html) => {
+      const match = html.match(/Version:\s*<\/h3>\s*<p[^>]*>([\d.]+)<\/p>/i);
+      return match ? match[1] : null;
+    },
+  },
+  'cumins insite': {
+    url: 'https://www.cummins.com/en-na/support/digital-products-and-services-support/insite-support',
+    parse: (html) => {
+      // First "INSITE x.x.x" in a label is the latest version
+      const match = html.match(/INSITE\s+([\d.]+)/i);
+      return match ? match[1] : null;
+    },
+  },
   'git enterprise': {
     url: 'https://enterprise.github.com/releases',
     parse: (html) => {
