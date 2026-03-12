@@ -68,18 +68,39 @@ async function fetchFromPage(softwareName, signal) {
 }
 
 // Manual overrides for software that Repology names differently
+// Manual overrides for software that Repology names differently
 const NAME_OVERRIDES = {
   'zoom': ['zoom-videoconference', 'zoom-unclassified'],
   'notepad++': 'notepad++',
   'visualstudiocode': 'vscode',
   'microsoftvisualcode': 'vscode',
+  '7zip': '7zip',
+  '.net': 'dotnet',
+  'anyconnect': 'cisco-anyconnect',
+  'anyconnectvpn': 'cisco-anyconnect',
+  'filezila': 'filezilla',
+  'globalprotect': 'globalprotect',
+  'globalprotectvpn': 'globalprotect',
+  'pdfsam': 'pdfsam',
+  'vmwarehorizonclient': 'vmware-horizon-client',
+  'winscp': 'winscp',
+  'anaconda':'anaconda3',
+  'webview2':'webview2',
+  'teamviewer':'teamviewer',
+  'powershell':'powershell',
+  
 };
 
 // Generate candidate Repology project names from a software name
 function getCandidateNames(softwareName) {
-  const key = softwareName.toLowerCase().trim().replace(/\s+/g, '');
-  const override = NAME_OVERRIDES[key];
-  if (override) return Array.isArray(override) ? override : [override];
+const normalized = softwareName.toLowerCase().trim().replace(/\s+/g, '');
+
+// Check overrides using prefix matching
+for (const [overrideKey, value] of Object.entries(NAME_OVERRIDES)) {
+  if (normalized.startsWith(overrideKey)) {
+    return Array.isArray(value) ? value : [value];
+  }
+}
   const lower = softwareName.toLowerCase().trim();
   // Replace + with plus before stripping special chars
   const plusReplaced = lower.replace(/\+/g, 'plus');
@@ -139,22 +160,7 @@ async function fetchRepology(softwareName, signal) {
   };
 }
 
-// --- AI fallback ---
 
-const PROVIDERS = {
-  perplexity: {
-    key: () => import.meta.env.VITE_PERPLEXITY_API_KEY,
-    name: 'Perplexity',
-  },
-  gemini: {
-    key: () => import.meta.env.VITE_GEMINI_API_KEY,
-    name: 'Gemini',
-  },
-  openai: {
-    key: () => import.meta.env.VITE_OPENAI_API_KEY,
-    name: 'OpenAI',
-  },
-};
 
 export function getActiveProvider() {
   for (const [id, provider] of Object.entries(PROVIDERS)) {
@@ -176,69 +182,6 @@ function extractJSON(text) {
   return cleaned.slice(start, end + 1);
 }
 
-async function fetchAIFallback(softwareName, signal) {
-  const provider = getActiveProvider();
-  if (!provider) return null;
-
-  const apiKey = PROVIDERS[provider.id].key();
-  let res;
-
-  if (provider.id === 'perplexity') {
-    res = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      signal,
-      body: JSON.stringify({
-        model: 'sonar',
-        messages: [
-          { role: 'system', content: 'You are a software version lookup assistant. Respond only with valid JSON.' },
-          { role: 'user', content: buildPrompt(softwareName) },
-        ],
-      }),
-    });
-  } else if (provider.id === 'gemini') {
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal,
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: buildPrompt(softwareName) }] }],
-        tools: [{ google_search: {} }],
-      }),
-    });
-  } else {
-    res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      signal,
-      body: JSON.stringify({
-        model: 'gpt-4o-mini-search-preview',
-        messages: [
-          { role: 'system', content: 'You are a software version lookup assistant. Respond only with valid JSON.' },
-          { role: 'user', content: buildPrompt(softwareName) },
-        ],
-      }),
-    });
-  }
-
-  if (res.status === 429) throw { status: 429 };
-  if (!res.ok) throw new Error(`${provider.name} error: ${res.status}`);
-
-  const data = await res.json();
-  let raw;
-  if (provider.id === 'gemini') {
-    raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  } else {
-    raw = data.choices?.[0]?.message?.content || '';
-  }
-
-  console.log(`[AI Fallback - ${provider.name}] ${softwareName} raw:`, raw);
-  const parsed = JSON.parse(extractJSON(raw));
-  return {
-    latestVersion: parsed.latestVersion || null,
-    source: parsed.source || provider.name,
-  };
-}
 
 // --- Main lookup: Repology first, AI fallback ---
 

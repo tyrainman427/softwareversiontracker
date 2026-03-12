@@ -1,6 +1,13 @@
 import Papa from 'papaparse';
 
-const REQUIRED_COLUMNS = ['Software Name', 'Version Number'];
+const REQUIRED_COLUMNS = ['DisplayName', 'AppVersion','Publisher','AppType'];
+// Publishers we do not want to scan
+const EXCLUDED_PUBLISHERS = new Set([
+  'mtm','amzn','cetaris','konica','adobe',
+  'cisco','ford','lexmark','verint',
+  'hp','reveal','five9','sharp','snow','safe','fuelmaster',
+  'bosch','work','zebra','servicenow'
+]);
 
 export function parseCSV(file) {
   return new Promise((resolve, reject) => {
@@ -20,11 +27,27 @@ export function parseCSV(file) {
           reject(new Error(`Missing required columns: ${missing.join(', ')}. Your CSV must include: ${REQUIRED_COLUMNS.join(', ')}`));
           return;
         }
-        resolve(results.data);
+        // Filter rows before returning them
+        const filtered = results.data.filter(row => {
+
+          const publisher = (row.Publisher || '').toLowerCase();
+          const appType = (row.AppType || '').toLowerCase();
+
+            if (appType !== 'win32lobapp') return false;
+
+          for (const excluded of EXCLUDED_PUBLISHERS) {
+            if (publisher.includes(excluded)) return false;
+          }
+          return true;
+        });
+
+        resolve(filtered);
+  
       },
       error(err) {
         reject(new Error(`Failed to read CSV: ${err.message}`));
       },
+      
     });
   });
 }
@@ -34,8 +57,8 @@ export function exportOutdatedCSV(results) {
   if (outdated.length === 0) return;
 
   const exportData = outdated.map(r => ({
-    'Software Name': r['Software Name'],
-    'Version Number': r['Version Number'],
+    'Display Name': r['Display Name'],
+    'App Version': r['App Version'],
     'Latest Version': r._latestVersion || '',
   }));
 

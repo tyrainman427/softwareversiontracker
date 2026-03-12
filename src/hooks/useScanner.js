@@ -8,9 +8,28 @@ const MAX_RETRIES = 5;
 
 // In-house / internally maintained apps — skip version lookup
 const EXCLUDED_APPS = new Set([
-  // Add app names here (case-insensitive matching)
-  // 'MyInternalTool',
-  'keepass',
+  'yubikeymanager',
+'workday',
+'vehiclemanagmentsystem',
+'snowinventory',
+'sharpuniversal',
+'sharpmx',
+'servicenow',
+'seon',
+'remove-allwebapps',
+'remotedesktopclient',
+'regkeyconfig',
+'phishalertbutton',
+'mtmrevealtraining',
+'mtmrevealstagin',
+'mtmreveal',
+'logitechunifyingsoftware',
+'b5061768-x64-Bitlocker',
+'hplaser',
+'hpuniversal',
+'fuelmaster',
+'forcewindowsupdate',
+'emailcomputerreport'
 ]);
 
 function sleep(ms, signal) {
@@ -45,8 +64,8 @@ export function useScanner(parsedData) {
       if (controller.signal.aborted) break;
 
       const row = { ...parsedData[i] };
-      const name = row['Software Name'];
-      const installed = row['Version Number'];
+      const name = row['DisplayName'];
+      const installed = row['AppVersion'];
       setCurrentItem(name || `Row ${i + 1}`);
 
       // Skip excluded (in-house) apps
